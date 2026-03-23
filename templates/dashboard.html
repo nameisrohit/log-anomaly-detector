@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL.log — Anomaly Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+body{
+    background:#0a0e14;color:#c5cdd8;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+    height:100vh;overflow:hidden;
+}
+body::after{
+    content:'';position:fixed;inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
+    pointer-events:none;z-index:999;
+}
+.app{height:100vh;display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:1fr 340px}
+.hdr{
+    grid-column:1/-1;display:flex;align-items:center;
+    justify-content:space-between;padding:11px 20px;
+    background:#0d1219;border-bottom:1px solid #1a2332;
+}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.dot{width:8px;height:8px;border-radius:50%;background:#00e5a0;animation:blink 1.4s ease-in-out infinite}
+.logo{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;letter-spacing:-.5px;color:#e8ecf1}
+.logo em{color:#00e5a0;font-style:normal}
+.badge{font-size:9px;color:#3a4a5a;letter-spacing:1.5px;text-transform:uppercase}
+.stats{grid-column:1/-1;display:flex;gap:1px;background:#0d1219;border-bottom:1px solid #1a2332}
+.sc{flex:1;padding:10px 16px;background:#0f1720}
+.sl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#4a5a6a;margin-bottom:2px}
+.sv{font-family:'Outfit',sans-serif;font-size:22px;font-weight:600;color:#e8ecf1}
+.sv.d{color:#ff2d55}.sv.w{color:#f9c846}.sv.g{color:#00e5a0}
+.main{display:flex;flex-direction:column;overflow:hidden;background:#0a0e14}
+.ph{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:9px 16px;background:#0d1219;border-bottom:1px solid #1a2332;
+}
+.pt{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#4a5a6a;font-weight:600}
+.ls{flex:1;overflow-y:auto;padding:4px 0}
+.lr{
+    display:grid;grid-template-columns:65px 150px 1fr 60px;
+    gap:8px;padding:5px 16px;align-items:center;
+    font-size:12px;animation:fadeIn .18s ease-out;
+}
+.lr:hover{background:#111923}
+.lr.anom{background:#ff2d5510;border-left:2px solid #ff2d55}
+.lt{color:#3a4a5a;font-size:11px}
+.lc{color:#5a8abf;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lm{color:#8a9bb0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.le{font-size:10px;font-weight:600;padding:2px 6px;border-radius:2px;text-align:center}
+.sb{display:flex;flex-direction:column;background:#0d1219;border-left:1px solid #1a2332;overflow:hidden}
+.sb .ph{background:#0f1720}
+.al{flex:1;overflow-y:auto;padding:4px 0}
+.ac{
+    padding:10px 13px;margin:4px 8px;background:#111923;
+    border:1px solid #1a2332;border-radius:4px;
+    animation:fadeIn .22s ease-out;
+}
+.ac-time{font-size:10px;color:#3a4a5a;margin-bottom:3px}
+.ac-msg{font-size:11px;color:#ff6b7a;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-block{font-size:10px;color:#5a8abf;background:#5a8abf15;padding:1px 6px;border-radius:2px;display:inline-block}
+.ac-eid{font-size:10px;color:#f9c846;margin-left:6px}
+.emp{display:flex;align-items:center;justify-content:center;flex:1;color:#2a3a4a;font-size:11px;text-transform:uppercase;letter-spacing:2px;padding:30px}
+.conn{font-size:10px;padding:3px 10px;border-radius:3px;border:1px solid #1a2332}
+.conn.on{color:#00e5a0;border-color:#00e5a040}
+.conn.off{color:#ff2d55;border-color:#ff2d5540}
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="hdr">
+        <div class="hdr-l">
+            <div class="dot" id="dot"></div>
+            <div class="logo"><em>◆</em> SENTINEL<em>.</em>log</div>
+            <span class="badge">real-time monitoring</span>
+        </div>
+        <div class="conn off" id="connStatus">disconnected</div>
+    </div>
+
+    <div class="stats">
+        <div class="sc">
+            <div class="sl">Total Events</div>
+            <div class="sv" id="statTotal">0</div>
+        </div>
+        <div class="sc">
+            <div class="sl">Anomalies Detected</div>
+            <div class="sv g" id="statAnom">0</div>
+        </div>
+        <div class="sc">
+            <div class="sl">Detection Rate</div>
+            <div class="sv g" id="statRate">0.0%</div>
+        </div>
+        <div class="sc">
+            <div class="sl">Model</div>
+            <div class="sv" style="font-size:14px">DeepLog LSTM</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="ph">
+            <div class="pt" id="streamTitle">Log Stream — waiting for data</div>
+        </div>
+        <div class="ls" id="logStream">
+            <div class="emp">Connecting to log stream...</div>
+        </div>
+    </div>
+
+    <div class="sb">
+        <div class="ph">
+            <div class="pt">Anomaly Alerts (<span id="anomCount">0</span>)</div>
+        </div>
+        <div class="al" id="anomList">
+            <div class="emp">No anomalies yet</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const logStream = document.getElementById('logStream');
+const anomList = document.getElementById('anomList');
+const statTotal = document.getElementById('statTotal');
+const statAnom = document.getElementById('statAnom');
+const statRate = document.getElementById('statRate');
+const anomCount = document.getElementById('anomCount');
+const streamTitle = document.getElementById('streamTitle');
+const connStatus = document.getElementById('connStatus');
+const dot = document.getElementById('dot');
+
+let logCount = 0;
+let anomalyCount = 0;
+let firstLog = true;
+let firstAnom = true;
+
+function connect() {
+    const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+    ws.onopen = () => {
+        connStatus.textContent = 'connected';
+        connStatus.className = 'conn on';
+        dot.style.background = '#00e5a0';
+    };
+
+    ws.onclose = () => {
+        connStatus.textContent = 'disconnected';
+        connStatus.className = 'conn off';
+        dot.style.background = '#ff2d55';
+        setTimeout(connect, 2000);
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'update') {
+            updateLog(data.log);
+            updateCounters(data.counters);
+        }
+    };
+}
+
+function updateLog(log) {
+    if (firstLog) {
+        logStream.innerHTML = '';
+        firstLog = false;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'lr' + (log.is_anomaly ? ' anom' : '');
+    row.innerHTML = `
+        <span class="lt">${log.time}</span>
+        <span class="lc">${log.component}</span>
+        <span class="lm" ${log.is_anomaly ? 'style="color:#ff6b7a;font-weight:500"' : ''}>${log.message}</span>
+        <span class="le" style="color:${log.is_anomaly ? '#ff2d55' : '#6b7a8d'};background:${log.is_anomaly ? '#ff2d5515' : 'transparent'}">${log.is_anomaly ? 'ANOMALY' : 'E'+log.event_id}</span>
+    `;
+
+    logStream.insertBefore(row, logStream.firstChild);
+    logCount++;
+
+    if (logStream.children.length > 200) {
+        logStream.removeChild(logStream.lastChild);
+    }
+
+    streamTitle.textContent = `Log Stream — ${logCount.toLocaleString()} events`;
+
+    if (log.is_anomaly) {
+        addAnomaly(log);
+    }
+}
+
+function addAnomaly(log) {
+    if (firstAnom) {
+        anomList.innerHTML = '';
+        firstAnom = false;
+    }
+    anomalyCount++;
+
+    const card = document.createElement('div');
+    card.className = 'ac';
+    card.innerHTML = `
+        <div class="ac-time">${log.time}</div>
+        <div class="ac-msg">${log.message}</div>
+        <span class="ac-block">${log.block_id || 'unknown'}</span>
+        <span class="ac-eid">Event E${log.event_id} unexpected</span>
+    `;
+
+    anomList.insertBefore(card, anomList.firstChild);
+    anomCount.textContent = anomalyCount;
+
+    if (anomList.children.length > 50) {
+        anomList.removeChild(anomList.lastChild);
+    }
+}
+
+function updateCounters(c) {
+    statTotal.textContent = c.total.toLocaleString();
+    statAnom.textContent = c.anomalies;
+    statAnom.className = 'sv ' + (c.anomalies > 10 ? 'd' : c.anomalies > 3 ? 'w' : 'g');
+    const rate = c.total > 0 ? ((c.anomalies / c.total) * 100).toFixed(2) : '0.00';
+    statRate.textContent = rate + '%';
+    statRate.className = 'sv ' + (parseFloat(rate) > 5 ? 'd' : parseFloat(rate) > 2 ? 'w' : 'g');
+}
+
+// Fetch initial state
+fetch('/api/state').then(r => r.json()).then(data => {
+    updateCounters(data.counters);
+    data.logs.slice(0, 50).reverse().forEach(updateLog);
+}).catch(() => {});
+
+connect();
+</script>
+</body>
+</html>
