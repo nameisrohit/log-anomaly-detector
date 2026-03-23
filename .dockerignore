@@ -1,0 +1,10 @@
+venv/
+.git/
+__pycache__/
+*.pyc
+notebooks/
+.ipynb_checkpoints/
+data/raw/HDFS_1.tar.gz
+docs/
+tests/
+.github/
